@@ -1,1 +1,4 @@
-Edit `package.json`, set `build` to either `browser` or `couchapp`.
+A web interface to manage CCNQ{3,4}.
+
+Handles:
+- rules
