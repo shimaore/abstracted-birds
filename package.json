@@ -8,7 +8,7 @@
   "title": "Abstracted Birds",
   "description": "A web interface to manage CCQN{3,4}",
   "scripts": {
-    "prepublish": "grunt build-browser build-couchapp",
+    "prepublish": "grunt build:browser build:couchapp",
     "test": "grunt test"
   },
   "author": "Stéphane Alnet <stephane@shimaore.net> (http://shimaore.net/)",
@@ -22,6 +22,7 @@
     "grunt-contrib-uglify": "^0.5.1",
     "couchapp": "^0.11.0",
     "grunt-couchapp": "^0.2.1",
+    "grunt-contrib-coffee": "^0.11.1",
     "grunt-notify": "^0.3.1",
     "browserify": "^5.11.1",
     "grunt-browserify": "^3.0.1",
@@ -34,7 +35,6 @@
     "rfolderify": "^1.3.0",
     "component": "^0.19.9",
     "teacup": "^0.4.2",
-    "grunt-contrib-coffee": "^0.11.1",
     "page": "^1.3.7",
     "superagent": "^0.18.2",
     "pouchdb": "^3.0.5"
