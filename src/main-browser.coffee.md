@@ -19,7 +19,7 @@ Browser main
 
     page '/', ->
       {ul} = teacup
-      ($ 'body').html teacup.render ->
+      ($ '#content').html teacup.render ->
         ul '.rulesets'
         ul '.rules'
 
@@ -65,4 +65,5 @@ Once the user chose a ruleset, enumerate the available routes inside the rule.
 
 Start the application.
 
+    page.base window.location.pathname
     page()
