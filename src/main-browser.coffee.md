@@ -17,7 +17,7 @@ Browser main
     db_path = "#{base}/#{window.location.pathname.split('/')[1]}"
     db = new pouchdb db_path
 
-    page '/', ->
+    page '/index.html', ->
       {ul} = teacup
       ($ '#content').html teacup.render ->
         ul '.rulesets'
@@ -44,26 +44,33 @@ In CCNQ4 each ruleset will be stored in a separate database. (There will be mast
 
       db.allDocs startkey:'ruleset:', endkey:'ruleset;', include_docs: true
       .then ({rows}) ->
+        console.log arguments
         {li,a} = teacup
         ($ '.rulesets').append teacup.render ->
           for row in rows
             li ->
-              a href:'./ruleset/#{row.doc.ruleset}', alt:row.doc.description, -> row.doc.title
+              a href:"./ruleset/#{row.doc.ruleset}", alt:row.doc.description, -> row.doc.title
 
 Once the user chose a ruleset, enumerate the available routes inside the rule.
 
     page '/ruleset/:ruleset', ({params:{ruleset}}) ->
 
-      db.query startkey:[ruleset,0], endkey:[ruleset,1], reduce:true
+      db.query "#{pkg.name}/rules", startkey:[ruleset,0], endkey:[ruleset,1], reduce:true
       .then ({rows}) ->
         {li,a} = teacup
         ($ '.rules').append teacup.render ->
           for row in rows
             prefix = row.key[2]
             li ->
-              a href:'./rule/#{ruleset}:#{prefix}', "#{prefix} #{row.value-1}"
+              a href:"./rule/#{ruleset}:#{prefix}", "#{prefix} #{row.value-1}"
 
 Start the application.
 
-    page.base window.location.pathname
+    page '*', ->
+      console.log arguments
+
+    dir = window.location.pathname.split('/')
+    page_base = dir[0..dir.length-2].join '/'
+    console.log {page_base}
+    page.base page_base
     page()
