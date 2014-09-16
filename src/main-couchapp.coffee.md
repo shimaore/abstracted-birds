@@ -7,6 +7,7 @@ This is ran through browserify, feel free to require()!
 
     ddoc =
       _id: "_design/#{pkg.name}"
+      version: pkg.version
       rewrite: {}
       views: {}
       shows: {}

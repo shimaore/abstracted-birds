@@ -2,7 +2,7 @@ module.exports = (grunt) ->
 
   pkg = grunt.file.readJSON 'package.json'
 
-  build = require "./Gruntfile-#{pkg.build}"
+  builds = pkg.builds
 
   config =
     pkg: pkg
@@ -11,27 +11,19 @@ module.exports = (grunt) ->
       component:
         command: 'component install -d && component build -d -o dist -n component -s undefined'
 
-    browserify:
-      dist:
-        options:
-          transform: ['coffeeify','debowerify','decomponentify', 'deamdify', 'deglobalify', 'rfileify', 'rfolderify']
-        files:
-          'dist/<%= pkg.name %>.js': 'src/main-<%= pkg.build %>.coffee.md'
+    browserify: {}
 
     clean:
       dist: ['lib/', 'dist/']
       modules: ['node_modules/', 'bower_components/', 'components/']
       test: ['test/*.js','test/*.html']
 
-    uglify:
-      dist:
-        files:
-          'dist/<%= pkg.name %>.min.js': 'dist/<%= pkg.name %>.js'
+    uglify: {}
 
     watch:
-      dist:
+      browser:
         files: 'src/*.coffee.md'
-        tasks: ['browserify','copy:test','notify:watch']
+        tasks: ['build:browser','notify:watch']
 
     notify:
       watch:
@@ -39,7 +31,8 @@ module.exports = (grunt) ->
           title: 'Task completed'
           message: 'Build is complete.'
 
-  build.config config
+  for build in builds
+    (require "./Gruntfile-#{build}").config config
 
   grunt.initConfig config
   grunt.loadNpmTasks 'grunt-shell'
@@ -48,4 +41,8 @@ module.exports = (grunt) ->
   grunt.loadNpmTasks 'grunt-contrib-uglify'
   grunt.loadNpmTasks 'grunt-contrib-watch'
   grunt.loadNpmTasks 'grunt-notify'
-  build.grunt grunt
+
+  for build in builds
+    (require "./Gruntfile-#{build}").grunt grunt
+
+  grunt.registerTask 'default', ("build:#{build}" for build in builds)

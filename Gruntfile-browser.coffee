@@ -1,20 +1,24 @@
 @config = (config) ->
 
-  config.copy ?= {}
-  config.copy.test =
-    expand: true
-    cwd: 'dist/'
-    src: ['*.js']
-    dest: 'test/'
+  config.browserify.browser =
+    options:
+      transform: 'coffeeify rfileify rfolderify debowerify decomponentify deglobalify'.split ' '
+    files:
+      'dist/<%= pkg.name %>.browser.js': 'src/main-browser.coffee.md'
+
+  config.clean.browser = ['dist/<%= pkg.name %>.browser.js']
+
+  config.uglify.browser =
+    files:
+      'src/attachments/<%= pkg.name %>.min.js': 'dist/<%= pkg.name %>.browser.js'
 
 @grunt = (grunt) ->
 
   grunt.loadNpmTasks 'grunt-contrib-copy'
 
   fs = require 'fs'
-  grunt.registerTask 'test-build-html', 'Build HTML for test.', ->
-    html = require 'test/index.coffee'
-    fs.writeFileSync 'test/index.html', html
+  grunt.registerTask 'build:html', 'Build HTML for test.', ->
+    html = require 'src/index.coffee'
+    fs.writeFileSync 'src/attachments/index.html', html
 
-  grunt.registerTask 'default', 'clean:dist shell:component browserify uglify:dist'.split ' '
-  grunt.registerTask 'test', 'default clean:test copy:test test-build-html'.split ' '
+  grunt.registerTask 'build:browser', 'clean:browser shell:component browserify:browser uglify:browser build:html'.split ' '
