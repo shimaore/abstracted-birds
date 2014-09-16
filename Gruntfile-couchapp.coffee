@@ -7,7 +7,7 @@
 
   config.couchapp =
     main:
-      db: 'http://localhost:5984/main'
+      db: (require './.config').db
       app: 'src/main-couchapp.js'
 
   config.clean.couchapp = ['src/main-couchapp.js']

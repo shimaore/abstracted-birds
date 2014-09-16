@@ -12,6 +12,11 @@
     files:
       'src/attachments/<%= pkg.name %>.min.js': 'dist/<%= pkg.name %>.browser.js'
 
+  config.copy ?= {}
+  config.copy.browser =
+    files:
+      'src/attachments/<%= pkg.name %>.min.js': 'dist/<%= pkg.name %>.browser.js'
+
 @grunt = (grunt) ->
 
   grunt.loadNpmTasks 'grunt-contrib-copy'
@@ -21,4 +26,5 @@
     html = require 'src/index.coffee'
     fs.writeFileSync 'src/attachments/index.html', html
 
-  grunt.registerTask 'build:browser', 'clean:browser shell:component browserify:browser uglify:browser build:html'.split ' '
+  # grunt.registerTask 'build:browser', 'clean:browser shell:component browserify:browser uglify:browser build:html'.split ' '
+  grunt.registerTask 'build:browser', 'clean:browser shell:component browserify:browser copy:browser build:html'.split ' '

@@ -6,3 +6,6 @@ src/attachments/*.js
 src/attachments/*.html
 src/attachments/*.css
 src/main-couchapp.js
+npm-debug.log
+.config.coffee
+.start

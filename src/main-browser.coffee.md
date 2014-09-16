@@ -18,8 +18,10 @@ Browser main
     db = new PouchDB db_path
 
     page '/', ->
+      {ul} = teacup
       ($ 'body').html teacup.render ->
         ul '.rulesets'
+        ul '.rules'
 
 Enumerate the available rulesets.
 
@@ -31,7 +33,7 @@ In CCNQ3 this means using a view to enumerate the `sip_domain_name` + `groupid` 
       db.view "#{pkg.name}/rulesets",
         reduce: true
       .then ({rows}) ->
-        {ul,li} = teacup
+        {li,a} = teacup
         ($ '.rulesets').append teacup.render ->
           for row in rows
             li ->
@@ -42,7 +44,7 @@ In CCNQ4 each ruleset will be stored in a separate database. (There will be mast
 
       db.allDocs startkey:'ruleset:', endkey:'ruleset;', include_docs: true
       .then ({rows}) ->
-        {ul,li} = teacup
+        {li,a} = teacup
         ($ '.rulesets').append teacup.render ->
           for row in rows
             li ->
@@ -50,6 +52,17 @@ In CCNQ4 each ruleset will be stored in a separate database. (There will be mast
 
 Once the user chose a ruleset, enumerate the available routes inside the rule.
 
-      page '/ruleset/:ruleset', ->
+    page '/ruleset/:ruleset', ({params:{ruleset}}) ->
+
+      db.query startkey:[ruleset,0], endkey:[ruleset,1], reduce:true
+      .then ({rows}) ->
+        {li,a} = teacup
+        ($ '.rules').append teacup.render ->
+          for row in rows
+            prefix = row.key[2]
+            li ->
+              a href:'./rule/#{ruleset}:#{prefix}', "#{prefix} #{row.value-1}"
+
+Start the application.
 
     page()
