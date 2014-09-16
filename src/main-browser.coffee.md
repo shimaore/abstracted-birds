@@ -14,8 +14,8 @@ Browser main
     request = require 'superagent'
 
     base = "#{window.location.protocol}/#{window.location.host}"
-    db_path = "#{base}/#{pathname.split('/')[0]}"
-    db = new PouchDB db_path
+    db_path = "#{base}/#{window.location.pathname.split('/')[0]}"
+    db = new pouchdb db_path
 
     page '/', ->
       {ul} = teacup
