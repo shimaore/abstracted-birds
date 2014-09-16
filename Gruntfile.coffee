@@ -9,7 +9,7 @@ module.exports = (grunt) ->
 
     shell:
       component:
-        command: 'component install -d && component build -d -o dist -n component -s undefined'
+        command: 'component install -d && component build -d -o dist -n component'
 
     browserify: {}
 
