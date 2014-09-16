@@ -7,7 +7,7 @@ module.exports = render ->
     head ->
       meta charset:'utf-8'
       meta 'http-equiv':'Content-Type', content:'text/html; charset=UTF-8'
-      title pkg.title
+      title "#{pkg.title} #{pkg.description}"
       link rel:'stylesheet', type:'text/css', href:'component.css'
       link rel:'stylesheet', type:'text/css', href:'index.css'
   body ->

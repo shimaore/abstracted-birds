@@ -1,6 +1,5 @@
 {
   "development": {
-    "component/router": "*",
     "component/dom": "*"
   }
 }
