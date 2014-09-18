@@ -147,20 +147,21 @@ Let's hope the sip_domain_name is the same for all rules.
         if the_gwlist is false
           ($ '.rules').prepend teacup.render ->
             p 'Warning: the targets are not matching, proceed with caution.'
+          the_gwlist = null
 
         db.query "#{pkg.name}/gateways", startkey:[the_sip_domain_name], endkey:[the_sip_domain_name,{}]
         .then ({rows}) ->
           gateways = (row.key[1] for row in rows)
 
-          db.query "#{pkg.name}/carriers", startkey:[the_sip_domain_name], endkey:[the_sip_domain_name,{}]
+          db.query "#{pkg.name}/carriers", startkey:[the_sip_domain_name], endkey:[the_sip_domain_name,{}], group_level:2
           .then ({rows}) ->
-            carriers = ("##{row._id.split(':')[2]}" for row in rows)
+            carriers = ("##{row.key[1]}" for row in rows)
 
-            ($ '.rules').prepend teacup.render ->
+            ($ '.input').html teacup.render ->
               label for:'target1', 'Target 1'
-              input '#target1', list:'gateway_or_carrier', value:the_gwlist?.split(',')[0]
+              input '#target1', list:'gateway_or_carrier', value:the_gwlist?.split(',')[0] ? ''
               label for:'target2', 'Target 2'
-              input '#target2', list:'gateway_or_carrier', value:the_gwlist?.split(',')[1]
+              input '#target2', list:'gateway_or_carrier', value:the_gwlist?.split(',')[1] ? ''
 
               button 'Change'
 
@@ -168,9 +169,11 @@ Let's hope the sip_domain_name is the same for all rules.
                 option value:v for v in gateways
                 option value:c for c in carriers
 
+            console.log {gateways,carriers}
+
 When the button is clicked,
 
-            ($ '.rules button').on 'click', ->
+            ($ '.input button').on 'click', ->
 
 retrieve the two target values
 
@@ -187,7 +190,7 @@ build the new gwlist
 gather the list of rules' ids,
 
               ids = []
-              ($ '.rules input:checked').each ->
+              ($ '.input input:checked').each ->
                 ids.push ($ @).value()
 
 and update the values
