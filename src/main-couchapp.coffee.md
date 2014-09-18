@@ -27,6 +27,12 @@ This is ran through browserify, feel free to require()!
             if profile.egress_gwid?
               emit [doc.sip_domain_name,profile.egress_gwid], null
 
+    ddoc.views.carriers =
+      map: (doc) ->
+        if doc.type is 'carrier' and doc.sip_domain_name?
+          emit [doc.sip_domain_name,doc.carrierid], null
+      reduce: '_count'
+
     ddoc.views.rules =
       map: (doc) ->
         if doc.type is 'rule'
@@ -39,7 +45,8 @@ This is ran through browserify, feel free to require()!
         if doc.type is 'rule' and doc.attrs?.cdr?
           [prefix_id,destination_id,tarif_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr] = doc.attrs.cdr.split '_'
 
-          emit [destination_id,tarif_id,doc.prefix], {prefix_id,tarif,min_call_price,illimite_france,illimite_mond,mobile_fr}
+          emit [destination_id,tarif_id,doc.prefix], {prefix_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr}
+      reduce: '_count'
 
 Load attachments, return.
 
