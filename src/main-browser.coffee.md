@@ -102,15 +102,6 @@ As the user inputs data, show the possible routes.
 
     page '/rule/:ruleset/:prefix', ({params:{ruleset,prefix}}) ->
 
-      db.query "#{pkg.name}/rules", startkey:[ruleset,prefix.length-1], endkey:[ruleset,prefix.length+1], reduce:true, group_level:3
-      .then ({rows}) ->
-        {li,a} = teacup
-        ($ '.rules').append teacup.render ->
-          for row in rows
-            prefix = row.key[2]
-            li "#prefix-#{prefix}", ->
-              a href:"/rule/#{ruleset}/#{prefix}", "#{if prefix is '' then 'Default route' else prefix} (#{row.value-1})"
-              # TODO: query whether that rule has a record, display associated data
 
 Default (normally is an internal error).
 
