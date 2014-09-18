@@ -10,6 +10,7 @@ module.exports = render ->
       title "#{pkg.title} -- #{pkg.description} (version #{pkg.version})"
       link rel:'stylesheet', type:'text/css', href:'component.css'
       link rel:'stylesheet', type:'text/css', href:'index.css'
+      link rel:'stylesheet', type:'text/css', href:'//maxcdn.bootstrapcdn.com/font-awesome/4.2.0/css/font-awesome.min.css'
     body ->
       div '#content'
       script type:'text/javascript', src:"#{pkg.name}.min.js"
