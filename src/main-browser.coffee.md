@@ -25,8 +25,6 @@ Browser main
         ul '.rules'
         div '.input'
 
-        a href:'/server', -> 'Servers'
-
 Enumerate the available rulesets.
 
       ($ '.rulesets').empty()
@@ -228,43 +226,6 @@ Batch them in packs of 500.
                   alert err
                 else
                   page '/'
-
-Server operations
-=================
-
-Enumerate the servers
-
-    page '/server', ->
-      ($ '.rulesets').empty()
-      ($ '.rules').empty()
-
-      {label,input,button,datalist,option} = teacup
-      ($ '.input').html teacup.render ->
-        label for:'server', 'Server'
-        input '#server', list:'of_servers'
-        button 'Reload routes!'
-
-      db.allDocs startkey:'host:', endkey:'host;', include_docs:true
-      .then ({rows}) ->
-        ($ '.input').append teacup.render ->
-          datalist '#of_servers', ->
-            option value:row.doc.host for row in rows when row.doc?.host and not row.value.deleted and row.doc.opensips? and row.doc.sip_domain_name?
-
-      ($ '.input button').on 'click', ->
-        ($ '.input button').attr 'disabled', true
-        host = ($ '.input #server').value()
-        if host and host isnt ''
-          request
-          .put '/_ccnq3/commands'
-          .send
-            opensips:'dr_reload'
-            host: host
-          .end (res) ->
-            ($ '.input button').attr 'disabled', false
-            if res.error?
-              alert res.error
-            else
-              console.log res
 
 Default (normally is an internal error).
 
