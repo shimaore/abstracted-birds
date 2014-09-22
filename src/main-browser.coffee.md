@@ -12,17 +12,20 @@ Browser main
 
     pouchdb = require 'pouchdb'
     request = require 'superagent'
+    async = require 'async'
 
     base = "#{window.location.protocol}//#{window.location.host}"
     db_path = "#{base}/#{window.location.pathname.split('/')[1]}"
     db = new pouchdb db_path
 
     page '/', ->
-      {ul,div} = teacup
+      {ul,div,a} = teacup
       ($ '#content').html teacup.render ->
         ul '.rulesets'
         ul '.rules'
         div '.input'
+
+        a href:'/server', -> 'Servers'
 
 Enumerate the available rulesets.
 
@@ -53,7 +56,6 @@ In CCNQ4 each ruleset will be stored in a separate database. (There will be mast
 
 Once the user chose a ruleset,
 
-
     td = require './telephonie_destinations.json'
     destinations = {}
     destinations[doc.id] = "#{doc.lib_destination} (#{doc.type})" for doc in td
@@ -82,7 +84,7 @@ What is helpful is to be able to locate a number's destination ("route") and be 
 
 Note: don't put the `input` tag inside a form, this way we won't have to deal with default form submission.
 
-        input type:'tel'
+        input type:'tel', placeholder:'336........'
         div '.results'
 
 As the user inputs data, show the possible routes.
@@ -108,9 +110,9 @@ As the user inputs data, show the possible routes.
 Per-destination updates.
 
     page '/destination/:destination_id', (params:{destination_id}) ->
+      ($ '.rules').empty()
       db.query "#{pkg.name}/rule_by_destination", startkey:[destination_id], endkey:[destination_id,{}], reduce: false, include_docs: true
       .then ({rows}) ->
-        ($ '.rules').empty()
         {li,input,a,span,datalist,p,label,button,option} = teacup
         the_gwlist = null
         the_sip_domain_name = null
@@ -119,7 +121,7 @@ Per-destination updates.
           [dummy,sip_domain_name,groupid,prefix] = row.id.split ':'
           ($ '.rules').append teacup.render ->
             li ->
-              input type:'checkbox', value:row.id, checked:true, disabled:true
+              input type:'checkbox', value:row.id, checked:true
               a href:"/rule/#{sip_domain_name}:#{groupid}/#{prefix}", " #{prefix}"
               span ", tarif #{tarif_id}, targets: #{row.doc.gwlist}"
 
@@ -163,7 +165,7 @@ Let's hope the sip_domain_name is the same for all rules.
               label for:'target2', 'Target 2'
               input '#target2', list:'gateway_or_carrier', value:the_gwlist?.split(',')[1] ? ''
 
-              button 'Change'
+              button 'Change!'
 
               datalist '#gateway_or_carrier', ->
                 option value:v for v in gateways
@@ -177,8 +179,8 @@ When the button is clicked,
 
 retrieve the two target values
 
-              target1 = ($ '.rules #target1').value()
-              target2 = ($ '.rules #target2').value()
+              target1 = ($ '.input #target1').value()
+              target2 = ($ '.input #target2').value()
 
 build the new gwlist
 
@@ -190,28 +192,79 @@ build the new gwlist
 gather the list of rules' ids,
 
               ids = []
-              ($ '.input input:checked').each ->
+              ($ '.rules input:checked').each ->
                 ids.push ($ @).value()
 
 and update the values
 
-              db.allDocs keys:ids, include_docs:true
-              .then ({rows}) ->
-                docs = (row.doc for row in rows when row.doc? and not row.value.deleted)
-                for doc in docs
-                  doc.gwlist = new_gwlist
+However we can't just submit thousands of records at once, CouchDB and/or the browser with complain.
+Batch them in packs of 500.
 
-                db.bulkDocs docs
-                .then (res) ->
-                  failed = []
-                  for row in res
-                    if not row.ok
-                      failed.push row.id
-                  if failed.length > 0
-                    alert "#{failed.length} failed"
-                  else
-                    path '/'
+              submit_batch = (batch,next) ->
+                db.allDocs keys:batch, include_docs:true
+                .then ({rows}) ->
+                  docs = (row.doc for row in rows when row.doc? and not row.value.deleted)
+                  for doc in docs
+                    doc.gwlist = new_gwlist
 
+                  db.bulkDocs docs
+                  .then (res) ->
+                    failed = []
+                    for row in res
+                      if not row.ok
+                        failed.push row.id
+                    if failed.length > 0
+                      next "#{failed.length} failed"
+                    else
+                      next null
+
+              batch_size = 500
+              batches = []
+              for s in [0..ids.length] by batch_size
+                batches.push ids[s..s+batch_size]
+
+              async.eachSeries batches, submit_batch, (err) ->
+                if err
+                  alert err
+                else
+                  page '/'
+
+Server operations
+=================
+
+Enumerate the servers
+
+    page '/server', ->
+      ($ '.rulesets').empty()
+      ($ '.rules').empty()
+
+      {label,input,button,datalist,option} = teacup
+      ($ '.input').html teacup.render ->
+        label for:'server', 'Server'
+        input '#server', list:'of_servers'
+        button 'Reload routes!'
+
+      db.allDocs startkey:'host:', endkey:'host;', include_docs:true
+      .then ({rows}) ->
+        ($ '.input').append teacup.render ->
+          datalist '#of_servers', ->
+            option value:row.doc.host for row in rows when row.doc?.host and not row.value.deleted and row.doc.opensips? and row.doc.sip_domain_name?
+
+      ($ '.input button').on 'click', ->
+        ($ '.input button').attr 'disabled', true
+        host = ($ '.input #server').value()
+        if host and host isnt ''
+          request
+          .put '/_ccnq3/commands'
+          .send
+            opensips:'dr_reload'
+            host: host
+          .end (res) ->
+            ($ '.input button').attr 'disabled', false
+            if res.error?
+              alert res.error
+            else
+              console.log res
 
 Default (normally is an internal error).
 
