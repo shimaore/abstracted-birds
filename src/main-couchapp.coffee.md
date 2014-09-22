@@ -33,13 +33,6 @@ This is ran through browserify, feel free to require()!
           emit [doc.sip_domain_name,doc.carrierid], null
       reduce: '_count'
 
-    ddoc.views.rules =
-      map: (doc) ->
-        if doc.type is 'rule'
-          {prefix} = doc
-          emit ["#{doc.sip_domain_name}:#{doc.groupid}",prefix.split('')...], null
-      reduce: '_count'
-
     ddoc.views.rule_by_destination =
       map: (doc) ->
         if doc.type is 'rule' and doc.attrs?.cdr?
