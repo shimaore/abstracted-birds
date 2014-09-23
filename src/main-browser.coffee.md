@@ -203,7 +203,7 @@ Batch them in packs of 500.
                 .then ({rows}) ->
                   docs = (row.doc for row in rows when row.doc? and not row.value.deleted)
                   for doc in docs
-                    doc.gwlist = new_gwlist
+                    doc.gwlist = new_gwlist.join ','
 
                   db.bulkDocs docs
                   .then (res) ->
