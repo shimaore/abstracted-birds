@@ -9,3 +9,4 @@ src/main-couchapp.js
 npm-debug.log
 .config.coffee
 .start
+config.json

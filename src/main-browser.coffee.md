@@ -5,13 +5,14 @@ Browser main
     $ = component 'component-dom'
 
     pkg = require '../package.json'
+    cfg = require '../config.json'
     version = "#{pkg.name} version #{pkg.version}"
 
     page = require 'page'
     teacup = require 'teacup'
 
     pouchdb = require 'pouchdb'
-    request = require 'superagent'
+    request = require 'superagent-as-promised'
     async = require 'async'
 
     base = "#{window.location.protocol}//#{window.location.host}"
@@ -54,9 +55,11 @@ In CCNQ4 each ruleset will be stored in a separate database. (There will be mast
 
 Once the user chose a ruleset,
 
-    td = require './telephonie_destinations.json'
     destinations = {}
-    destinations[doc.id] = "#{doc.lib_destination} (#{doc.type})" for doc in td
+    request
+    .get cfg.get_destinations
+    .then (td) ->
+      destinations[doc.id] = "#{doc.lib_destination} (#{doc.type})" for doc in td
 
     page '/ruleset/:ruleset', ({params:{ruleset}}) ->
 
