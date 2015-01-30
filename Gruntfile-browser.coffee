@@ -2,7 +2,7 @@
 
   config.browserify.browser =
     options:
-      transform: 'coffeeify rfileify rfolderify debowerify decomponentify deglobalify'.split ' '
+      transform: 'coffeeify rfileify rfolderify debowerify decomponentify-1.x deglobalify'.split ' '
     files:
       'dist/<%= pkg.name %>.browser.js': 'src/main-browser.coffee.md'
 

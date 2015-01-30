@@ -1,7 +1,7 @@
 Browser main
 ============
 
-    component = require '../dist/component'
+    component = require '../comp/dist/component'
     $ = component 'component-dom'
 
     pkg = require '../package.json'
