@@ -26,7 +26,8 @@ Browser main
         ul '.rules'
         div '.input'
 
-Enumerate the available rulesets.
+Enumerate the available rulesets
+--------------------------------
 
       ($ '.rulesets').empty()
 
@@ -60,6 +61,8 @@ Once the user chose a ruleset,
     .get cfg.get_destinations
     .then (td) ->
       destinations[doc.id] = "#{doc.lib_destination} (#{doc.type})" for doc in td
+    .catch (error) ->
+      console.log "Error: #{error}"
 
     page '/ruleset/:ruleset', ({params:{ruleset}}) ->
 
@@ -97,6 +100,7 @@ As the user inputs data, show the possible routes.
 
         db.allDocs include_docs:true, keys:ids
         .then ({rows}) ->
+          how_many = 0
           for row in rows.reverse()
             if row.value? and not row.value.deleted
               [prefix_id,destination_id,tarif_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr] = row.doc.attrs.cdr.split '_'
@@ -104,11 +108,40 @@ As the user inputs data, show the possible routes.
               ($ 'div.results').append teacup.render ->
                 p ->
                   a href:"/destination/#{destination_id}", destinations[destination_id] ? "Destination #{destination_id}"
+              how_many++
+          if how_many is 0
+            ($ 'div.results').append teacup.render ->
+              {p,a,text} = teacup
+              p ->
+                text "No results for #{tel}. "
+              p ->
+                text "Add a new prefix (routing)"
+                label 'Prefix: '
+                input type:'tel', placeholder:'336'
+
+                text " If no CDR info is availabel: "
+                a href:cfg.billing_add, "Add new prefix (billing)"
+
+
+Add new prefix
+--------------
+
+The rule record must contain:
+- _id: "rule:#{prefix}"
+- type: "rule"
+- prefix: prefix
+- attrs: { cdr }
+- gwlist: [ { ...}, {...}]
+with possible gateways:
+{ source_registrant:true }
+{ carrierid }
+{ gwid }
 
     page '/rule/:ruleset/:prefix', ({params:{ruleset,prefix}}) ->
       alert 'FIXME'
 
-Per-destination updates.
+Per-destination updates
+-----------------------
 
     page '/destination/:destination_id', (params:{destination_id}) ->
       ($ '.rules').empty()
