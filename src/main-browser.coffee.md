@@ -8,6 +8,9 @@ Browser main
     cfg = require '../config.json'
     version = "#{pkg.name} version #{pkg.version}"
 
+    local = require './local.coffee.md'
+    rule_designer = require './rule-designer.coffee.md'
+
     page = require 'page'
     teacup = require 'teacup'
 
@@ -20,11 +23,12 @@ Browser main
     db = new pouchdb db_path
 
     page '/', ->
-      {ul,div,a} = teacup
+      {ul,div,a,text} = teacup
       ($ '#content').html teacup.render ->
         ul '.rulesets'
         ul '.rules'
         div '.input'
+        text version
 
 Enumerate the available rulesets
 --------------------------------
@@ -65,6 +69,8 @@ Once the user chose a ruleset,
       console.log "Error: #{error}"
 
     page '/ruleset/:ruleset', ({params:{ruleset}}) ->
+
+      the_sip_domain_name = (ruleset.split /:/)[0]
 
 enumerate the available routes inside the rule.
 
@@ -109,19 +115,32 @@ As the user inputs data, show the possible routes.
                 p ->
                   a href:"/destination/#{destination_id}", destinations[destination_id] ? "Destination #{destination_id}"
               how_many++
-          if how_many is 0
+          return unless how_many is 0
+
+No match found.
+
+          local.get_billing_data tel
+          .then (cdr) ->
+            {p,text,a} = teacup
+
+Add new prefix (billing).
+
+            if not cdr?
+              ($ 'div.results').append teacup.render ->
+                p ->
+                  text " No CDR info is available: "
+                  a href:cfg.billing_add, "Add new prefix (billing)"
+              return
+
+Add new prefix (routing).
+
             ($ 'div.results').append teacup.render ->
-              {p,a,text} = teacup
               p ->
                 text "No results for #{tel}. "
-              p ->
-                text "Add a new prefix (routing)"
-                label 'Prefix: '
-                input type:'tel', placeholder:'336'
 
-                text " If no CDR info is availabel: "
-                a href:cfg.billing_add, "Add new prefix (billing)"
-
+            ctx = {db, widget: ($ 'div.results')}
+            rule_designer.call ctx, the_sip_domain_name, prefix:tel, attrs: {cdr}
+            # .then (doc) ->
 
 Add new prefix
 --------------
@@ -192,12 +211,15 @@ Let's hope the sip_domain_name is the same for all rules.
           db.query "#{pkg.name}/carriers", startkey:[the_sip_domain_name], endkey:[the_sip_domain_name,{}], group_level:2
           .then ({rows}) ->
             carriers = ("##{row.key[1]}" for row in rows)
+            {label,text,input,button,datalist,option} = teacup
 
             ($ '.input').html teacup.render ->
-              label for:'target1', 'Target 1'
-              input '#target1', list:'gateway_or_carrier', value:the_gwlist?.split(',')[0] ? ''
-              label for:'target2', 'Target 2'
-              input '#target2', list:'gateway_or_carrier', value:the_gwlist?.split(',')[1] ? ''
+              label ->
+                text 'Target 1'
+                input '#target1', list:'gateway_or_carrier', value:the_gwlist?.split(',')[0] ? ''
+              label ->
+                text 'Target 2'
+                input '#target2', list:'gateway_or_carrier', value:the_gwlist?.split(',')[1] ? ''
 
               button 'Change!'
 
