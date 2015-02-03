@@ -14,12 +14,6 @@ This is ran through browserify, feel free to require()!
       lists: {}
       validate_doc_update: (newDoc,oldDoc,userCtx) ->
 
-    ddoc.views.rulesets =
-      map: (doc) ->
-        if doc.type is 'rule'
-          emit [doc.sip_domain_name,doc.groupid], null
-      reduce: '_count'
-
     ddoc.views.gateways =
       map: (doc) ->
         if doc.type is 'host' and doc.sip_domain_name? and doc.sip_profiles?
@@ -31,14 +25,6 @@ This is ran through browserify, feel free to require()!
       map: (doc) ->
         if doc.type is 'carrier' and doc.sip_domain_name?
           emit [doc.sip_domain_name,doc.carrierid], null
-      reduce: '_count'
-
-    ddoc.views.rule_by_destination =
-      map: (doc) ->
-        if doc.type is 'rule' and doc.attrs?.cdr?
-          [prefix_id,destination_id,tarif_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr] = doc.attrs.cdr.split '_'
-
-          emit [destination_id,tarif_id,doc.prefix], {prefix_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr}
       reduce: '_count'
 
 Load attachments, return.

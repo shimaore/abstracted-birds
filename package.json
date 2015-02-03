@@ -4,9 +4,9 @@
     "browser",
     "couchapp"
   ],
-  "version": "1.0.17",
+  "version": "1.0.26",
   "title": "Abstracted Birds",
-  "description": "A web interface to manage CCNQ{3,4}",
+  "description": "A web interface to manage LCR routes in CCNQ4",
   "scripts": {
     "prepublish": "./node_modules/.bin/grunt build:browser build:couchapp",
     "test": "./node_modules/.bin/grunt test"
