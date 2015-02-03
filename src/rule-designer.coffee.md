@@ -6,8 +6,8 @@
     component = require '../comp/dist/component'
     $ = component 'component-dom'
 
-    module.exports = rule_designer = (the_sip_domain_name,doc,save_doc) ->
-      _on = => @widget.on arguments...
+    module.exports = rule_designer = (the_sip_domain_name,doc) ->
+      _on = => @on arguments...
 
       assert the_sip_domain_name?, 'the_sip_domain_name is required'
       assert @widget?, 'widget is required'
@@ -57,7 +57,7 @@
       .catch (error) ->
         console.log "rule-designer: #{error}"
 
-      @widget.on 'click', '.targetAdder', (e) =>
+      @click '.targetAdder', (e) =>
         e.preventDefault()
         $ e.target
         .parent()
@@ -66,19 +66,10 @@
           {li} = teacup
           li '.target-entry', -> target_field {}, _on
 
-      validate_field = (selector,validate) =>
-        @widget.on 'change', selector, (e) ->
-          value = ($ e.target).value()
-          valid = validate value
-          if valid
-            ($ e.target).removeClass 'error'
-          else
-            ($ e.target).addClass 'error'
-
-      validate_field 'input[name="carrierid"]', (value) ->
+      @validate_field 'input[name="carrierid"]', (value) ->
         (not value?) or value in carriers
 
-      validate_field 'input[name="gwid"]', (value) ->
+      @validate_field 'input[name="gwid"]', (value) ->
         (not value?) or value in gateways
 
       update_doc = =>
@@ -112,20 +103,31 @@
                   .value()
                 assert gwid in gateways, "#{gwid} is not a valid gateway"
                 {gwid}
-        console.log doc.gwlist
         doc.gwlist = Array.filter doc.gwlist, (x) -> x?
-        console.log doc.gwlist
         doc
 
-      @widget.on 'change', (e) =>
+      @change (e) =>
         e.preventDefault()
         try
           @widget
           .find '.error'
           .text ''
           updated_doc = update_doc()
-          if save_doc?
-            doc = save_doc updated_doc
+
+          # FIXME: UI "saving"
+          @widget
+          .find '.error'
+          .text 'Saving...'
+
+          @ruleset_db.put doc
+          .then (new_doc) =>
+            doc = new_doc
+            # FIXME: UI "saved"
+            @widget
+            .find '.error'
+            .text 'Saved...'
+          .catch (error) ->
+            throw error
         catch error
           console.log "Error: #{error}"
           @widget

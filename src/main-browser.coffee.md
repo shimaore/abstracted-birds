@@ -4,6 +4,28 @@ Browser main
     component = require '../comp/dist/component'
     $ = component 'component-dom'
 
+    class Ctx
+      constructor: (selector,extend) ->
+        @widget = $ selector
+        if extend?
+          this[k] = v for own k,v of extend
+      on: ->
+        @widget.on arguments...
+      change: ->
+        @on 'change', arguments...
+      click: ->
+        @on 'click', arguments...
+
+      validate_field: (selector,validate) ->
+        @change selector, (e) ->
+          el = $ e.target
+          value = el.value()
+          valid = validate value
+          if valid
+            el.removeClass 'error'
+          else
+            el.addClass 'error'
+
     pkg = require '../package.json'
     cfg = require '../config.json'
     version = "#{pkg.name} version #{pkg.version}"
@@ -14,13 +36,20 @@ Browser main
     page = require 'page'
     teacup = require 'teacup'
 
-    pouchdb = require 'pouchdb'
+    PouchDB = require 'pouchdb'
     request = require 'superagent-as-promised'
     async = require 'async'
+    assert = require 'assert'
 
     base = "#{window.location.protocol}//#{window.location.host}"
     db_path = "#{base}/#{window.location.pathname.split('/')[1]}"
-    db = new pouchdb db_path
+    db = new PouchDB db_path
+
+    ruleset_db_of = (ruleset) ->
+      db.get "ruleset:#{ruleset}", (doc) ->
+        assert doc, "Missing ruleset record for #{ruleset}"
+        assert doc.database, "Missing database for ruleset #{ruleset}"
+        ruleset_db = new PouchDB "#{cfg.ruleset_base}/#{doc.database}"
 
     page '/', ->
       {ul,div,a,text} = teacup
@@ -35,20 +64,7 @@ Enumerate the available rulesets
 
       ($ '.rulesets').empty()
 
-In CCNQ3 this means using a view to enumerate the `sip_domain_name` + `groupid` combinations.
-
-      ###
-      db.view "#{pkg.name}/rulesets",
-        reduce: true
-      .then ({rows}) ->
-        {li,a} = teacup
-        ($ '.rulesets').append teacup.render ->
-          for row in rows
-            li ->
-              a href:"/ruleset/#{row.key.join ':'}", # FIXME Need some description.
-      ###
-
-In CCNQ4 each ruleset will be stored in a separate database. (There will be master records in the provisioning database pointing to each ruleset so that they can be enumerated even if the underlying implementation does not support allDBs.)
+In CCNQ4 each ruleset is stored in a separate database. (There will be master records in the provisioning database pointing to each ruleset so that they can be enumerated properly.)
 
       db.allDocs startkey:'ruleset:', endkey:'ruleset;', include_docs: true
       .then ({rows}) ->
@@ -71,40 +87,29 @@ Once the user chose a ruleset,
     page '/ruleset/:ruleset', ({params:{ruleset}}) ->
 
       the_sip_domain_name = (ruleset.split /:/)[0]
+locate a number's destination ("route") and enumerate the rules in that route (and eventually modify them).
 
-enumerate the available routes inside the rule.
-
-      ###
-      db.query "#{pkg.name}/rules", startkey:[ruleset,''], endkey:[ruleset,{}], reduce:true, group_level:2
-      .then ({rows}) ->
-        {li,a} = teacup
-        ($ '.rules').append teacup.render ->
-          for row in rows
-            prefix = row.key.slice(1).join ''
-            li "#prefix-#{prefix}", ->
-              a href:"/rule/#{ruleset}/#{prefix}", "#{if prefix is '' then 'Default route' else prefix} (#{row.value-1})"
-              # TODO: query whether that rule has a record, display associated data
-      ###
-
-But that's not really helpful.
-What is helpful is to be able to locate a number's destination ("route") and be able to look at the rules in that route (and eventually modify them).
-
-      {form,input,div} = teacup
       ($ 'div.input').html teacup.render ->
+        {form,input,div} = teacup
 
 Note: don't put the `input` tag inside a form, this way we won't have to deal with default form submission.
 
-        input type:'tel', placeholder:'336........'
+        input type:'tel', name:'prefix', placeholder:'336........'
         div '.results'
 
 As the user inputs data, show the possible routes.
 
-      ($ 'div.input input').on 'change', ->
-        tel = ($ 'div.input input').value()
+      ($ 'div.input input[name="prefix"]').on 'change', (e) ->
+        tel = ($ e.target).value()
         return if tel.length < 1
-        ids = ("rule:#{ruleset}:#{tel[0...i]}" for i in [0..tel.length])
 
-        db.allDocs include_docs:true, keys:ids
+        ctx = null
+        ruleset_db_of ruleset
+        .then (ruleset_db) ->
+          ctx = new Ctx 'div.results', {db,ruleset_db}
+        .then ->
+          ids = ("rule:#{tel[0...i]}" for i in [0..tel.length])
+          ctx.ruleset_db.allDocs include_docs:true, keys:ids
         .then ({rows}) ->
           how_many = 0
           for row in rows.reverse()
@@ -113,7 +118,7 @@ As the user inputs data, show the possible routes.
               {p,a} = teacup
               ($ 'div.results').append teacup.render ->
                 p ->
-                  a href:"/destination/#{destination_id}", destinations[destination_id] ? "Destination #{destination_id}"
+                  a href:"/destination/#{ruleset}/#{destination_id}", destinations[destination_id] ? "Destination #{destination_id}"
               how_many++
           return unless how_many is 0
 
@@ -138,9 +143,7 @@ Add new prefix (routing).
               p ->
                 text "No results for #{tel}. "
 
-            ctx = {db, widget: ($ 'div.results')}
             rule_designer.call ctx, the_sip_domain_name, prefix:tel, attrs: {cdr}
-            # .then (doc) ->
 
 Add new prefix
 --------------
