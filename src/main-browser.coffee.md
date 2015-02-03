@@ -165,23 +165,52 @@ with possible gateways:
 Per-destination updates
 -----------------------
 
-    page '/destination/:destination_id', (params:{destination_id}) ->
+    page '/destination/:ruleset/:destination_id', (params:{ruleset,destination_id}) ->
+
+We need to insert into the ruleset DB this view:
+
       ($ '.rules').empty()
-      db.query "#{pkg.name}/rule_by_destination", startkey:[destination_id], endkey:[destination_id,{}], reduce: false, include_docs: true
+      ctx = {}
+      _id = "_design/#{pkg.name}"
+
+      ruleset_db_of ruleset
+      .then (ruleset_db) ->
+        ctx.ruleset_db = ruleset_db
+
+Inject the design document into the ruleset database so that we can query it.
+
+        ruleset_db.get _id
+      .catch (error) ->
+        {_id}
+      .then (ddoc) ->
+        ddoc.views ?= {}
+        ddoc.views.rule_by_destination =
+          map: (doc) ->
+            if doc.type is 'rule' and doc.attrs?.cdr?
+              [prefix_id,destination_id,tarif_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr] = doc.attrs.cdr.split '_'
+
+              emit [destination_id,tarif_id,doc.prefix], {prefix_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr}
+          reduce: '_count'
+        ctx.ruleset_db.put ddoc
+
+List the rules matching the given destination.
+
+      .then ->
+        ctx.ruleset_db.query "#{pkg.name}/rule_by_destination", startkey:[destination_id], endkey:[destination_id,{}], reduce: false, include_docs: true
       .then ({rows}) ->
-        {li,input,a,span,datalist,p,label,button,option} = teacup
         the_gwlist = null
         the_sip_domain_name = null
         for row in rows
           [dest,tarif_id,prefix] = row.key
           [dummy,sip_domain_name,groupid,prefix] = row.id.split ':'
           ($ '.rules').append teacup.render ->
+            {li,input,a,span} = teacup
             li ->
               input type:'checkbox', value:row.id, checked:true
               a href:"/rule/#{sip_domain_name}:#{groupid}/#{prefix}", " #{prefix}"
               span ", tarif #{tarif_id}, targets: #{row.doc.gwlist}"
 
-Let's hope the gwlist is the same for all rules.
+Let's check the `gwlist` is the same for all rules.
 
           the_gwlist ?= row.doc.gwlist
 
@@ -190,12 +219,14 @@ If not all rules point to the same destination, let the user know.
           if the_gwlist? and the_gwlist isnt row.doc.gwlist
             the_gwlist = false
 
-Let's hope the sip_domain_name is the same for all rules.
+Let's check the `sip_domain_name` is the same for all rules.
 
           the_sip_domain_name ?= sip_domain_name
 
           if the_sip_domain_name? and the_sip_domain_name isnt sip_domain_name
             the_sip_domain_name = false
+
+Check whether our assumptions hold:
 
         if the_sip_domain_name is false
           ($ '.rules').prepend teacup.render ->
@@ -207,16 +238,27 @@ Let's hope the sip_domain_name is the same for all rules.
             p 'Warning: the targets are not matching, proceed with caution.'
           the_gwlist = null
 
-        db.query "#{pkg.name}/gateways", startkey:[the_sip_domain_name], endkey:[the_sip_domain_name,{}]
-        .then ({rows}) ->
-          gateways = (row.key[1] for row in rows)
+        ctx.the_gwlist = the_gwlist
+        ctx.the_sip_domain_name = the_sip_domain_name
 
-          db.query "#{pkg.name}/carriers", startkey:[the_sip_domain_name], endkey:[the_sip_domain_name,{}], group_level:2
-          .then ({rows}) ->
-            carriers = ("##{row.key[1]}" for row in rows)
-            {label,text,input,button,datalist,option} = teacup
+      .then ->
+        ctx.gateways = null
+        ctx.carriers = null
+        db.query "#{pkg.name}/gateways",
+          startkey:[the_sip_domain_name]
+          endkey:[the_sip_domain_name,{}]
+      .then ({rows}) ->
+        ctx.gateways = (row.key[1] for row in rows)
+        db.query "#{pkg.name}/carriers",
+          startkey:[the_sip_domain_name]
+          endkey:[the_sip_domain_name,{}]
+          group_level:2
+      .then ({rows}) ->
+        ctx.carriers = ("##{row.key[1]}" for row in rows)
+      .then ->
 
             ($ '.input').html teacup.render ->
+              {label,text,input,button,datalist,option} = teacup
               label ->
                 text 'Target 1'
                 input '#target1', list:'gateway_or_carrier', value:the_gwlist?.split(',')[0] ? ''
@@ -227,10 +269,8 @@ Let's hope the sip_domain_name is the same for all rules.
               button 'Change!'
 
               datalist '#gateway_or_carrier', ->
-                option value:v for v in gateways
-                option value:c for c in carriers
-
-            console.log {gateways,carriers}
+                option value:v for v in ctx.gateways
+                option value:c for c in ctx.carriers
 
 When the button is clicked,
 
@@ -243,7 +283,7 @@ retrieve the two target values
 
 build the new gwlist
 
-              new_gwlist = (target for target in [target1,target2] when target in gateways or target in carriers)
+              new_gwlist = (target for target in [target1,target2] when target in ctx.gateways or target in ctx.carriers)
               unless new_gwlist.length > 0
                 alert 'You must provide at least one valid target.'
                 return
