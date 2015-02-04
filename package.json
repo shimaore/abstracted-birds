@@ -4,7 +4,7 @@
     "browser",
     "couchapp"
   ],
-  "version": "1.0.26",
+  "version": "1.0.62",
   "title": "Abstracted Birds",
   "description": "A web interface to manage LCR routes in CCNQ4",
   "scripts": {
@@ -41,6 +41,10 @@
     "superagent": "^0.21.0",
     "superagent-as-promised": "^2.0.0",
     "teacup": "^1.0.0",
-    "teacup-camel-to-kebab": "^1.0.0"
+    "teacup-camel-to-kebab": "^1.0.0",
+    "teacup-databind": "^1.0.1"
+  },
+  "dependencies": {
+    "knockout": "^3.2.0"
   }
 }

@@ -4,37 +4,20 @@ Browser main
     component = require '../comp/dist/component'
     $ = component 'component-dom'
 
-    class Ctx
-      constructor: (selector,extend) ->
-        @widget = $ selector
-        if extend?
-          this[k] = v for own k,v of extend
-      on: ->
-        @widget.on arguments...
-      change: ->
-        @on 'change', arguments...
-      click: ->
-        @on 'click', arguments...
+    ko = require 'knockout'
+    (require './rule-entry.coffee.md') ko
 
-      validate_field: (selector,validate) ->
-        @change selector, (e) ->
-          el = $ e.target
-          value = el.value()
-          valid = validate value
-          if valid
-            el.removeClass 'error'
-          else
-            el.addClass 'error'
+    fun = (x) -> "(#{x})"
 
     pkg = require '../package.json'
     cfg = require '../config.json'
     version = "#{pkg.name} version #{pkg.version}"
 
     local = require './local.coffee.md'
-    rule_designer = require './rule-designer.coffee.md'
 
     page = require 'page'
     teacup = require 'teacup'
+    teacup.use (require 'teacup-databind')()
 
     PouchDB = require 'pouchdb'
     request = require 'superagent-as-promised'
@@ -45,10 +28,31 @@ Browser main
     db_path = "#{base}/#{window.location.pathname.split('/')[1]}"
     db = new PouchDB db_path
 
+    extend_ctx = (ctx) ->
+      assert ctx.sip_domain_name?
+      ctx.gateways = null
+      ctx.carriers = null
+      Promise.resolve()
+      .then ->
+        db.query "#{pkg.name}/gateways",
+          startkey:[ctx.sip_domain_name]
+          endkey:[ctx.sip_domain_name,{}]
+      .then ({rows}) ->
+        ctx.gateways = (row.key[1] for row in rows)
+      .then ->
+        db.query "#{pkg.name}/carriers",
+          startkey:[ctx.sip_domain_name]
+          endkey:[ctx.sip_domain_name,{}]
+          group_level:2
+      .then ({rows}) ->
+        ctx.carriers = ("##{row.key[1]}" for row in rows)
+
     ruleset_db_of = (ruleset) ->
-      db.get "ruleset:#{ruleset}", (doc) ->
-        assert doc, "Missing ruleset record for #{ruleset}"
-        assert doc.database, "Missing database for ruleset #{ruleset}"
+      db.get "ruleset:#{ruleset}"
+      .then (doc) ->
+        assert doc?, "Missing ruleset record for #{ruleset}"
+        assert doc.database?, "Missing database for ruleset #{ruleset}"
+        assert cfg.ruleset_base?, "Missing ruleset_base in configuration."
         ruleset_db = new PouchDB "#{cfg.ruleset_base}/#{doc.database}"
 
     page '/', ->
@@ -86,7 +90,7 @@ Once the user chose a ruleset,
 
     page '/ruleset/:ruleset', ({params:{ruleset}}) ->
 
-      the_sip_domain_name = (ruleset.split /:/)[0]
+      sip_domain_name = (ruleset.split /:/)[0]
 locate a number's destination ("route") and enumerate the rules in that route (and eventually modify them).
 
       ($ 'div.input').html teacup.render ->
@@ -103,10 +107,13 @@ As the user inputs data, show the possible routes.
         tel = ($ e.target).value()
         return if tel.length < 1
 
-        ctx = null
+        ctx = {db,sip_domain_name}
+
         ruleset_db_of ruleset
         .then (ruleset_db) ->
-          ctx = new Ctx 'div.results', {db,ruleset_db}
+          ctx.ruleset_db = ruleset_db
+        .then ->
+          extend_ctx ctx
         .then ->
           ids = ("rule:#{tel[0...i]}" for i in [0..tel.length])
           ctx.ruleset_db.allDocs include_docs:true, keys:ids
@@ -125,25 +132,32 @@ As the user inputs data, show the possible routes.
 No match found.
 
           local.get_billing_data tel
-          .then (cdr) ->
-            {p,text,a} = teacup
+        .then (cdr) ->
 
 Add new prefix (billing).
 
-            if not cdr?
-              ($ 'div.results').append teacup.render ->
-                p ->
-                  text " No CDR info is available: "
-                  a href:cfg.billing_add, "Add new prefix (billing)"
-              return
+          if not cdr?
+            ($ 'div.results').append teacup.render ->
+              {p,text,a} = teacup
+              p ->
+                text " No CDR info is available: "
+                a href:cfg.billing_add, "Add new prefix (billing)"
+            return
 
 Add new prefix (routing).
 
-            ($ 'div.results').append teacup.render ->
-              p ->
-                text "No results for #{tel}. "
+          ($ 'div.results').append teacup.render ->
+            {p,text,div,tag} = teacup
+            p ->
+              text "No results for #{tel}. "
+            p ->
+              tag 'rule-entry',
+                params: 'doc: doc, sip_domain_name: sip_domain_name, ruleset_db: ruleset_db, gateways: gateways, carriers: carriers'
+              , -> 'Installing...'
 
-            rule_designer.call ctx, the_sip_domain_name, prefix:tel, attrs: {cdr}
+          ctx.doc = prefix:tel, attrs: {cdr}
+
+          ko.applyBindings ctx
 
 Add new prefix
 --------------
@@ -165,33 +179,38 @@ with possible gateways:
 Per-destination updates
 -----------------------
 
+    insert_rule_by_destination = (db) ->
+      _id = "_design/#{pkg.name}"
+
+Inject the design document into the ruleset database so that we can query it.
+
+      db.get _id
+      .catch (error) ->
+        {_id}
+      .then (ddoc) ->
+        ddoc.views ?= {}
+        ddoc.views.rule_by_destination =
+          map: fun (doc) ->
+            if doc.type is 'rule' and doc.attrs?.cdr?
+              [prefix_id,destination_id,tarif_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr] = doc.attrs.cdr.split '_'
+
+              emit [destination_id,tarif_id,doc.prefix], {prefix_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr}
+          reduce: '_count'
+        db.put ddoc
+      .catch (error) ->
+        alert "Design: #{error}, assuming things are working."
+
     page '/destination/:ruleset/:destination_id', (params:{ruleset,destination_id}) ->
 
 We need to insert into the ruleset DB this view:
 
       ($ '.rules').empty()
       ctx = {}
-      _id = "_design/#{pkg.name}"
 
       ruleset_db_of ruleset
       .then (ruleset_db) ->
         ctx.ruleset_db = ruleset_db
-
-Inject the design document into the ruleset database so that we can query it.
-
-        ruleset_db.get _id
-      .catch (error) ->
-        {_id}
-      .then (ddoc) ->
-        ddoc.views ?= {}
-        ddoc.views.rule_by_destination =
-          map: (doc) ->
-            if doc.type is 'rule' and doc.attrs?.cdr?
-              [prefix_id,destination_id,tarif_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr] = doc.attrs.cdr.split '_'
-
-              emit [destination_id,tarif_id,doc.prefix], {prefix_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr}
-          reduce: '_count'
-        ctx.ruleset_db.put ddoc
+        insert_rule_by_destination ruleset_db
 
 List the rules matching the given destination.
 
@@ -228,9 +247,19 @@ Let's check the `sip_domain_name` is the same for all rules.
 
 Check whether our assumptions hold:
 
+        if not the_sip_domain_name?
+          ($ '.rules').prepend teacup.render ->
+            p 'Invalid rules, cannot proceed.'
+          return
+
         if the_sip_domain_name is false
           ($ '.rules').prepend teacup.render ->
             p 'The rules are not matching, cannot proceed.'
+          return
+
+        if not the_gwlist?
+          ($ '.rules').prepend teacup.render ->
+            p 'Invalid rules, cannot proceed.'
           return
 
         if the_gwlist is false
@@ -239,22 +268,10 @@ Check whether our assumptions hold:
           the_gwlist = null
 
         ctx.the_gwlist = the_gwlist
-        ctx.the_sip_domain_name = the_sip_domain_name
+        ctx.sip_domain_name = the_sip_domain_name
 
       .then ->
-        ctx.gateways = null
-        ctx.carriers = null
-        db.query "#{pkg.name}/gateways",
-          startkey:[the_sip_domain_name]
-          endkey:[the_sip_domain_name,{}]
-      .then ({rows}) ->
-        ctx.gateways = (row.key[1] for row in rows)
-        db.query "#{pkg.name}/carriers",
-          startkey:[the_sip_domain_name]
-          endkey:[the_sip_domain_name,{}]
-          group_level:2
-      .then ({rows}) ->
-        ctx.carriers = ("##{row.key[1]}" for row in rows)
+        extend_ctx ctx
       .then ->
 
             ($ '.input').html teacup.render ->
