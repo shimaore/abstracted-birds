@@ -25,6 +25,7 @@ Browser main
     assert = require 'assert'
 
     base = "#{window.location.protocol}//#{window.location.host}"
+    ruleset_base = cfg.ruleset_base ? base
     db_path = "#{base}/#{window.location.pathname.split('/')[1]}"
     db = new PouchDB db_path
 
@@ -52,8 +53,8 @@ Browser main
       .then (doc) ->
         assert doc?, "Missing ruleset record for #{ruleset}"
         assert doc.database?, "Missing database for ruleset #{ruleset}"
-        assert cfg.ruleset_base?, "Missing ruleset_base in configuration."
-        ruleset_db = new PouchDB "#{cfg.ruleset_base}/#{doc.database}"
+        assert ruleset_base?, "Missing ruleset_base."
+        ruleset_db = new PouchDB "#{ruleset_base}/#{doc.database}"
 
     page '/', ->
       {ul,div,a,text} = teacup
