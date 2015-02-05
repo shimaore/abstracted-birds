@@ -153,7 +153,7 @@ Add new prefix (routing).
               text "No results for #{tel}. "
             p ->
               tag 'rule-entry',
-                params: 'doc: doc, sip_domain_name: sip_domain_name, ruleset_db: ruleset_db, gateways: gateways, carriers: carriers'
+                params: 'doc:doc, $root:$root'
               , -> 'Installing...'
 
           ctx.doc = prefix:tel, attrs: {cdr}
