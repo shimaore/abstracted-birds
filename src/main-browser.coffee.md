@@ -5,7 +5,7 @@ Browser main
     $ = component 'component-dom'
 
     ko = require 'knockout'
-    (require './rule-entry.coffee.md') ko
+    (require 'ccnq-ko-rule-entry') ko
 
     fun = (x) -> "(#{x})"
 

@@ -15,6 +15,7 @@
   "devDependencies": {
     "async": "^0.9.0",
     "browserify": "^8.1.1",
+    "ccnq-ko-rule-entry": "^1.0.0",
     "coffeeify": "^1.0.0",
     "component": "^1.0.2",
     "couchapp": "^0.11.0",
