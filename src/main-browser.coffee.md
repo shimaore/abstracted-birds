@@ -5,7 +5,7 @@ Browser main
     $ = component 'component-dom'
 
     ko = require 'knockout'
-    (require 'ccnq-ko-rule-entry') ko
+    {RuleEntry,rule_entry} = (require 'ccnq-ko-rule-entry') ko
 
     fun = (x) -> "(#{x})"
 
@@ -152,11 +152,10 @@ Add new prefix (routing).
             p ->
               text "No results for #{tel}. "
             p ->
-              tag 'rule-entry',
-                params: 'doc:doc, $root:$root'
+              rule_entry 'doc'
               , -> 'Installing...'
 
-          ctx.doc = prefix:tel, attrs: {cdr}
+          ctx.doc = new RuleEntry prefix:tel, attrs: {cdr}
 
           ko.applyBindings ctx
 
