@@ -5,6 +5,7 @@ Browser main
     $ = component 'component-dom'
 
     ko = require 'knockout'
+    {RuleGwlist,rule_gwlist} = (require 'ccnq-ko-rule-gwlist') ko
     {RuleEntry,rule_entry} = (require 'ccnq-ko-rule-entry') ko
 
     fun = (x) -> "(#{x})"
@@ -46,7 +47,7 @@ Browser main
           endkey:[ctx.sip_domain_name,{}]
           group_level:2
       .then ({rows}) ->
-        ctx.carriers = ("##{row.key[1]}" for row in rows)
+        ctx.carriers = (row.key[1] for row in rows)
 
     ruleset_db_of = (ruleset) ->
       db.get "ruleset:#{ruleset}"
@@ -202,12 +203,15 @@ Inject the design document into the ruleset database so that we can query it.
 
     page '/destination/:ruleset/:destination_id', (params:{ruleset,destination_id}) ->
 
-We need to insert into the ruleset DB this view:
+      [sip_domain_name,groupid] = ruleset.split ':'
 
       ($ '.rules').empty()
       ctx = {}
 
       ruleset_db_of ruleset
+
+We need to insert into the ruleset DB this view:
+
       .then (ruleset_db) ->
         ctx.ruleset_db = ruleset_db
         insert_rule_by_destination ruleset_db
@@ -221,13 +225,13 @@ List the rules matching the given destination.
         the_sip_domain_name = null
         for row in rows
           [dest,tarif_id,prefix] = row.key
-          [dummy,sip_domain_name,groupid,prefix] = row.id.split ':'
+          [dummy,prefix] = row.id.split ':'
           ($ '.rules').append teacup.render ->
             {li,input,a,span} = teacup
             li ->
               input type:'checkbox', value:row.id, checked:true
               a href:"/rule/#{sip_domain_name}:#{groupid}/#{prefix}", " #{prefix}"
-              span ", tarif #{tarif_id}, targets: #{row.doc.gwlist}"
+              span ", tarif #{tarif_id}, targets: #{JSON.stringify row.doc.gwlist}"
 
 Let's check the `gwlist` is the same for all rules.
 
@@ -249,21 +253,25 @@ Check whether our assumptions hold:
 
         if not the_sip_domain_name?
           ($ '.rules').prepend teacup.render ->
+            {p} = teacup
             p 'Invalid rules, cannot proceed.'
           return
 
         if the_sip_domain_name is false
           ($ '.rules').prepend teacup.render ->
+            {p} = teacup
             p 'The rules are not matching, cannot proceed.'
           return
 
         if not the_gwlist?
           ($ '.rules').prepend teacup.render ->
+            {p} = teacup
             p 'Invalid rules, cannot proceed.'
           return
 
         if the_gwlist is false
           ($ '.rules').prepend teacup.render ->
+            {p} = teacup
             p 'Warning: the targets are not matching, proceed with caution.'
           the_gwlist = null
 
@@ -274,33 +282,22 @@ Check whether our assumptions hold:
         extend_ctx ctx
       .then ->
 
-            ($ '.input').html teacup.render ->
-              {label,text,input,button,datalist,option} = teacup
-              label ->
-                text 'Target 1'
-                input '#target1', list:'gateway_or_carrier', value:the_gwlist?.split(',')[0] ? ''
-              label ->
-                text 'Target 2'
-                input '#target2', list:'gateway_or_carrier', value:the_gwlist?.split(',')[1] ? ''
+        ($ 'div.results').append teacup.render ->
+          {p,button} = teacup
+          p ->
+            rule_gwlist 'gwlist'
+            , -> 'Installing...'
+            button '#gwlist-save', 'Save Changes'
 
-              button 'Change!'
-
-              datalist '#gateway_or_carrier', ->
-                option value:v for v in ctx.gateways
-                option value:c for c in ctx.carriers
-
-When the button is clicked,
-
-            ($ '.input button').on 'click', ->
-
-retrieve the two target values
-
-              target1 = ($ '.input #target1').value()
-              target2 = ($ '.input #target2').value()
+        ctx.gwlist = new RuleGwlist ctx.the_gwlist
+        ko.applyBindings ctx
 
 build the new gwlist
 
-              new_gwlist = (target for target in [target1,target2] when target in ctx.gateways or target in ctx.carriers)
+        $('#gwlist-save').on 'click', ->
+
+              new_gwlist = ctx.gwlist.toJS()
+
               unless new_gwlist.length > 0
                 alert 'You must provide at least one valid target.'
                 return
@@ -317,13 +314,13 @@ However we can't just submit thousands of records at once, CouchDB and/or the br
 Batch them in packs of 500.
 
               submit_batch = (batch,next) ->
-                ruleset_db.allDocs keys:batch, include_docs:true
+                ctx.ruleset_db.allDocs keys:batch, include_docs:true
                 .then ({rows}) ->
                   docs = (row.doc for row in rows when row.doc? and not row.value.deleted)
                   for doc in docs
-                    doc.gwlist = new_gwlist.join ','
+                    doc.gwlist = new_gwlist
 
-                  ruleset_db.bulkDocs docs
+                  ctx.ruleset_db.bulkDocs docs
                   .then (res) ->
                     failed = []
                     for row in res
