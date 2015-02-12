@@ -132,7 +132,7 @@ As the user inputs data, show the possible routes.
 
 No match found.
 
-          local.get_billing_data tel
+          local.get_billing_data cfg, tel
         .then (cdr) ->
 
 Add new prefix (billing).
@@ -317,13 +317,13 @@ However we can't just submit thousands of records at once, CouchDB and/or the br
 Batch them in packs of 500.
 
               submit_batch = (batch,next) ->
-                db.allDocs keys:batch, include_docs:true
+                ruleset_db.allDocs keys:batch, include_docs:true
                 .then ({rows}) ->
                   docs = (row.doc for row in rows when row.doc? and not row.value.deleted)
                   for doc in docs
                     doc.gwlist = new_gwlist.join ','
 
-                  db.bulkDocs docs
+                  ruleset_db.bulkDocs docs
                   .then (res) ->
                     failed = []
                     for row in res
