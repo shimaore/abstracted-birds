@@ -4,7 +4,7 @@
     "browser",
     "couchapp"
   ],
-  "version": "2.0.0",
+  "version": "2.1.0",
   "title": "Abstracted Birds",
   "description": "A web interface to manage LCR routes in CCNQ4",
   "scripts": {
