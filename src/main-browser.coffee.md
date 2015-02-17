@@ -134,6 +134,9 @@ As the user inputs data, show the possible routes.
 No match found.
 
           local.get_billing_data cfg, tel
+        .catch (error) ->
+          console.log "get_billing_data: #{error}"
+          null
         .then (cdr) ->
 
 Add new prefix (billing).
