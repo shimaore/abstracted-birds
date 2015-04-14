@@ -1,4 +1,4 @@
-{render,doctype,html,head,meta,title,link,body,div,script} = require 'teacup'
+{render,doctype,html,head,meta,title,link,body,div,script,address} = require 'teacup'
 pkg = require '../package.json'
 
 module.exports = render ->
@@ -14,3 +14,5 @@ module.exports = render ->
     body ->
       div '#content'
       script type:'text/javascript', src:"#{pkg.name}.min.js"
+      address ->
+        "This is #{pkg.name} #{pkg.version}."

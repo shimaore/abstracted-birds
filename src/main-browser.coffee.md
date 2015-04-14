@@ -12,7 +12,6 @@ Browser main
 
     pkg = require '../package.json'
     cfg = require '../config.json'
-    version = "#{pkg.name} version #{pkg.version}"
 
     local = require './local.coffee.md'
 
@@ -63,7 +62,6 @@ Browser main
         ul '.rulesets'
         ul '.rules'
         div '.input'
-        text version
 
 Enumerate the available rulesets
 --------------------------------
