@@ -8,8 +8,8 @@
   "title": "Abstracted Birds",
   "description": "A web interface to manage LCR routes in CCNQ4",
   "scripts": {
-    "prepublish": "./node_modules/.bin/grunt build:browser build:couchapp",
-    "test": "./node_modules/.bin/mocha"
+    "prepublish": "grunt build:browser build:couchapp",
+    "test": "mocha"
   },
   "author": "Stéphane Alnet <stephane@shimaore.net> (http://shimaore.net/)",
   "devDependencies": {
@@ -51,5 +51,22 @@
     "teacup": "^1.0.0",
     "teacup-camel-to-kebab": "^1.0.0",
     "teacup-databind": "^1.0.1"
-  }
+  },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/shimaore/abstracted-birds.git"
+  },
+  "bugs": {
+    "url": "https://github.com/shimaore/abstracted-birds/issues"
+  },
+  "homepage": "https://github.com/shimaore/abstracted-birds",
+  "main": "index.js",
+  "directories": {
+    "test": "test"
+  },
+  "dependencies": {},
+  "keywords": [
+    "CCNQ"
+  ],
+  "license": "Unlicense (http://unlicense.org/)"
 }
