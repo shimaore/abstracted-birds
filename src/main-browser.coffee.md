@@ -3,10 +3,7 @@ Browser main
 
     component = require '../comp/dist/component'
     $ = component 'component-dom'
-
     ko = require 'knockout'
-    {RuleGwlist,rule_gwlist} = (require 'ccnq-ko-rule-gwlist') ko
-    {RuleEntry,rule_entry} = (require 'ccnq-ko-rule-entry') ko
 
     fun = (x) -> "(#{x})"
 
@@ -14,21 +11,26 @@ Browser main
     cfg = require '../config.json'
     version = "#{pkg.name} version #{pkg.version}"
 
-    local = require './local.coffee.md'
-
     page = require 'page'
     teacup = require 'teacup'
     teacup.use (require 'teacup-databind')()
 
     PouchDB = require 'pouchdb'
-    request = require 'superagent-as-promised'
+    request = (require 'superagent-as-promised') require 'superagent'
     async = require 'async'
     assert = require 'assert'
 
     base = "#{window.location.protocol}//#{window.location.host}"
-    ruleset_base = cfg.ruleset_base ? base
-    db_path = "#{base}/#{window.location.pathname.split('/')[1]}"
+
+    db_path = config.db_path ? "#{base}/#{window.location.pathname.split('/')[1]}"
     db = new PouchDB db_path
+
+    local = require './local.coffee.md'
+    {RuleGwlist,rule_gwlist} = (require 'ccnq-ko-rule-gwlist') ko
+    {RuleEntry,rule_entry} = (require 'ccnq-ko-rule-entry') ko
+    ruleset_base = cfg.ruleset_base ? base
+
+* cfg.ruleset_base (URL) Location of the ruleset database
 
     extend_ctx = (ctx) ->
       assert ctx.sip_domain_name?
@@ -82,6 +84,8 @@ In CCNQ4 each ruleset is stored in a separate database. (There will be master re
 
 Once the user chose a ruleset,
 
+* cfg.get_destinations (URL path) Location of the web service to retrieve all destinations.
+
     destinations = {}
     request
     .get cfg.get_destinations
@@ -121,6 +125,14 @@ As the user inputs data, show the possible routes.
           ctx.ruleset_db.allDocs include_docs:true, keys:ids
         .then ({rows}) ->
           how_many = 0
+
+* doc.rule Document in a `ruleset` database, used to describe a route.
+* doc.attrs See doc.rule.attrs
+* doc.attrs.cdr See doc.rule.attrs
+* doc.rule.attrs Attributes inserted as doc.CDR.variables.ccnq_attrs
+* doc.CDR.variables.ccnq_attrs See doc.rule.attrs.cdr for a description.
+* doc.rule.attrs.cdr (string) Contains `prefix_id`, `destination_id`, `tarif_id`, `tarif`, `min_call_price`, `illimite_france`, `illimite_monde`, `mobile_fr` joined by underscore.
+
           for row in rows.reverse()
             if row.value? and not row.value.deleted
               [prefix_id,destination_id,tarif_id,tarif,min_call_price,illimite_france,illimite_monde,mobile_fr] = row.doc.attrs.cdr.split '_'
@@ -140,6 +152,8 @@ No match found.
         .then (cdr) ->
 
 Add new prefix (billing).
+
+* cfg.billing_add (URL) service to add a new prefix
 
           if not cdr?
             ($ 'div.results').append teacup.render ->

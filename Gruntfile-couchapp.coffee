@@ -3,14 +3,14 @@
   config.coffee =
     couchapp:
       files:
-        'src/main-couchapp.js': 'src/main-couchapp.coffee.md'
+        'dist/main-couchapp.js': 'src/main-couchapp.coffee.md'
 
   config.couchapp =
     main:
-      db: (require './.config').db
-      app: 'src/main-couchapp.js'
+      db: (require './local/install').db ? 'http://localhost:5984/main'
+      app: 'dist/main-couchapp.js'
 
-  config.clean.couchapp = ['src/main-couchapp.js']
+  config.clean.couchapp = ['dist/main-couchapp.js']
 
 @grunt = (grunt) ->
 

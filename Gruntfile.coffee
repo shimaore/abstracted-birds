@@ -7,15 +7,11 @@ module.exports = (grunt) ->
   config =
     pkg: pkg
 
-    shell:
-      component:
-        command: 'cd comp/ && component install -d && component build -d -o dist -n component'
-
     browserify: {}
 
     clean:
       dist: ['lib/', 'dist/']
-      modules: ['node_modules/', 'bower_components/', 'components/']
+      modules: ['node_modules/']
       test: ['test/*.js','test/*.html']
 
     uglify: {}
